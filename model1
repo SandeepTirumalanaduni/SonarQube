@@ -1,0 +1,82 @@
+pipeline {
+    // Specifies the agent where this pipeline will run.
+    agent {
+        // Runs this pipeline on a specific node with the label 'Agent1'.
+        node {
+            label 'Agent1'
+        }
+    }
+
+    // Defines the tools required for this pipeline. These tools must be configured in Jenkins.
+    tools {
+        // Specifies that the 'maven' tool named 'maven 3.9' should be available in the PATH during the build.
+        maven 'maven 3.9'
+        // Specifies that the 'jdk' tool named 'jdk17' should be available, setting JAVA_HOME.
+        jdk 'jdk17'
+    }
+
+    // Defines environment variables that will be available during the pipeline execution.
+    environment {
+        // Retrieves the installation path of the tool named 'Sonar_Scanner' (configured in Jenkins)
+        // and sets it to the SCANNER_HOME environment variable.
+        SCANNER_HOME = tool 'Sonar_Scanner'
+    }
+
+    // Defines the different stages of the pipeline execution.
+    stages {
+        // Stage: Git Checkout
+        // This stage is responsible for checking out the source code from the Git repository.
+        stage('Git Checkout') {
+            // Defines the steps to be executed within this stage.
+            steps {
+                // Step: git checkout
+                // Checks out the 'main' branch from the Git repository at the specified URL.
+                git branch: 'main', url: 'https://github.com/SandeepTirumalanaduni/Boardgame.git'
+            }
+        }
+
+        // Stage: Test
+        // This stage is responsible for running the unit tests of the project.
+        stage('Test') {
+            // Defines the steps to be executed within this stage.
+            steps {
+                // Step: mvn test
+                // Executes the Maven command 'test', which typically runs the project's unit tests.
+                // The 'maven' tool specified earlier will be used for this command.
+                sh 'mvn test'
+            }
+        }
+
+        // Stage: Package
+        // This stage is responsible for packaging the application (e.g., creating a JAR or WAR file).
+        stage('Package') {
+            // Defines the steps to be executed within this stage.
+            steps {
+                // Step: mvn package
+                // Executes the Maven command 'package', which compiles the code and creates the distributable package.
+                // The 'maven' tool specified earlier will be used for this command.
+                sh "mvn package"
+            }
+        }
+
+        // Stage: SonarQube Analysis
+        // This stage performs static code analysis using SonarQube.
+        stage('SonarQube Analysis') {
+            // Defines the steps to be executed within this stage.
+            steps {
+                // Step: withSonarQubeEnv('sonarqube')
+                // This step integrates with the SonarQube Jenkins plugin, using the SonarQube server configuration named 'sonarqube' (configured in Jenkins).
+                withSonarQubeEnv('sonarqube') {
+                    // Step: sh '''...'''
+                    // Executes a shell script. The triple quotes allow for multi-line commands.
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=BoardGame \
+                        -Dsonar.projectKey=BoardGame -Dsonar.java.binaries=target'''
+                    // This command invokes the SonarQube Scanner.
+                    // -Dsonar.projectName: Specifies the name of the project in SonarQube.
+                    // -Dsonar.projectKey: Specifies the unique key of the project in SonarQube.
+                    // -Dsonar.java.binaries=target: Tells the scanner where to find the compiled Java bytecode.
+                }
+            }
+        }
+    }
+}
